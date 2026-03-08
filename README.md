@@ -4,7 +4,8 @@ A lightweight routing tool for PHP, drawing inspiration from Express and Laravel
 ## Description
 This router provides a straightforward way to define and manage routes in PHP. Inspired by frameworks like Express and Laravel, it lets you assign specific handlers to routes and then processes incoming requests by matching them to the appropriate handler.
 
-## Installation
+## Installation 
+
 ```bash
 composer require josegarcia/router
 ```
