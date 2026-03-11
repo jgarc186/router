@@ -154,14 +154,6 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('IMPORTANT: ', $errorOutput);
         $this->assertStringContainsString('Hello, !', $templateOutput);
     }
-}
-     public function addResource()
-
-     {
-         Router::resource('/tests', Test::class);
-         $this->assertIsArray(Router::getRoutes());
-         $this->assertCount(11, Router::getRoutes());
-     }
 
     private function resetRoutes(): void
     {
