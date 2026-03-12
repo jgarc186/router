@@ -310,4 +310,14 @@ class Router
     {
         return self::$routes;
     }
+
+    /**
+     * Clears all registered routes. Intended for testing only.
+     *
+     * @internal
+     */
+    public static function clearRoutes(): void
+    {
+        self::$routes = [];
+    }
 }

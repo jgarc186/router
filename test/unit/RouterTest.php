@@ -31,6 +31,11 @@ class Test
 
 class RouterTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        Router::clearRoutes();
+    }
+
     /** @test - Test if the route is added to the routes array */
     public function addRoute()
     {
@@ -46,7 +51,7 @@ class RouterTest extends TestCase
         Router::get('/test', fn () => 'test');
 
         $this->assertIsArray(Router::getRoutes());
-        $this->assertCount(2, Router::getRoutes());
+        $this->assertCount(1, Router::getRoutes());
     }
 
     /** @test - Test if the route is added to the routes array */
@@ -55,7 +60,7 @@ class RouterTest extends TestCase
         Router::post('/test', fn () => 'test');
 
         $this->assertIsArray(Router::getRoutes());
-        $this->assertCount(3, Router::getRoutes());
+        $this->assertCount(1, Router::getRoutes());
     }
 
     /** @test - Test if the route is added to the routes array */
@@ -64,7 +69,7 @@ class RouterTest extends TestCase
         Router::put('/test', fn () => 'test');
 
         $this->assertIsArray(Router::getRoutes());
-        $this->assertCount(4, Router::getRoutes());
+        $this->assertCount(1, Router::getRoutes());
     }
 
     /** @test - test the json response from the router */
@@ -73,7 +78,7 @@ class RouterTest extends TestCase
         Router::get('/test', fn () => ['id' => 1, 'name' => 'John Doe', 'email' => '', 'phone' => '']);
 
         $this->assertIsArray(Router::getRoutes());
-        $this->assertCount(5, Router::getRoutes());
+        $this->assertCount(1, Router::getRoutes());
     }
 
     /** @test - Test if the route is added to the routes array */
@@ -81,7 +86,7 @@ class RouterTest extends TestCase
     {
         Router::resource('/tests', Test::class);
         $this->assertIsArray(Router::getRoutes());
-        $this->assertCount(11, Router::getRoutes());
+        $this->assertCount(6, Router::getRoutes());
     }
 
     /** @test - error.php must HTML-encode the $message variable */
@@ -155,16 +160,20 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('Hello, !', $templateOutput);
     }
 
-    private function resetRoutes(): void
+    /** @test - Test if clearRoutes empties the route array */
+    public function testClearRoutesEmptiesRouteArray(): void
     {
-        $ref = new \ReflectionProperty(Router::class, 'routes');
-        $ref->setAccessible(true);
-        $ref->setValue(null, []);
+        Router::get('/a', fn () => 'a');
+        Router::post('/b', fn () => 'b');
+        $this->assertCount(2, Router::getRoutes());
+
+        Router::clearRoutes();
+        $this->assertCount(0, Router::getRoutes());
+        $this->assertSame([], Router::getRoutes());
     }
 
     public function testCallHandlerWithArrayReturnProducesJson(): void
     {
-        $this->resetRoutes();
         Router::get('/api/test', fn () => ['key' => 'value']);
 
         ob_start();
@@ -176,7 +185,6 @@ class RouterTest extends TestCase
 
     public function testCallHandlerWithObjectReturnProducesJson(): void
     {
-        $this->resetRoutes();
         $obj = new \stdClass();
         $obj->name = 'test';
         Router::get('/api/obj', fn () => $obj);
@@ -190,7 +198,6 @@ class RouterTest extends TestCase
 
     public function testCallHandlerWithStringReturnEchoesDirectly(): void
     {
-        $this->resetRoutes();
         Router::get('/api/str', fn () => 'hello world');
 
         ob_start();
@@ -202,7 +209,6 @@ class RouterTest extends TestCase
 
     public function testCallHandlerSideEffectOutputIsDiscarded(): void
     {
-        $this->resetRoutes();
         Router::get('/api/warn', function () {
             echo 'side-effect-output';
             return ['status' => 'ok'];
