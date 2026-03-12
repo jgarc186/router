@@ -1,7 +1,8 @@
 {
   "name": "josegarcia/router",
   "description": "Simple router for PHP, that minics the behavior of the Express router",
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
+  "prefer-stable": true,
   "license": "MIT",
   "authors": [
     {
@@ -23,8 +24,8 @@
   },
   "require-dev": {
     "phpunit/phpunit": "^9.0",
-    "friendsofphp/php-cs-fixer": "dev-master",
-    "squizlabs/php_codesniffer": "4.0.x-dev"
+    "friendsofphp/php-cs-fixer": "^3.65",
+    "squizlabs/php_codesniffer": "^3.7"
   },
     "scripts": {
         "test": "phpunit --bootstrap vendor/autoload.php test/unit/RouterTest.php",
