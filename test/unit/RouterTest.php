@@ -5,30 +5,6 @@ namespace Test\Unit;
 use Garcia\Router;
 use PHPUnit\Framework\TestCase;
 
-class FakeController
-{
-    public function index()
-    {
-        return ['Hello' => 'index'];
-    }
-    public function store()
-    {
-        return ['Hello' => 'store'];
-    }
-    public function show()
-    {
-        return ['Hello' => 'show'];
-    }
-    public function update($params)
-    {
-        return ['Hello' => "update" . $params['id']];
-    }
-    public function destroy()
-    {
-        return ['Hello' => 'destroy'];
-    }
-}
-
 class RouterTest extends TestCase
 {
     protected function setUp(): void
