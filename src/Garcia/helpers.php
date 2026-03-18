@@ -8,6 +8,14 @@
  */
 function redirect(string $path)
 {
+    if (preg_match('/[\r\n]/', $path)) {
+        throw new \InvalidArgumentException('Invalid redirect path: newline characters are not allowed.');
+    }
+
+    if (!preg_match('/^\/(?!\/)/', $path)) {
+        throw new \InvalidArgumentException('Invalid redirect path: only relative paths starting with / are allowed.');
+    }
+
     header("Location: $path");
     exit;
 }
