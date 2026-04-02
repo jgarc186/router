@@ -81,4 +81,49 @@ class HelpersTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    // --- view() path traversal ---
+
+    public function testViewRejectsNullByte(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        view("foo\0../../etc/passwd", []);
+    }
+
+    public function testViewRejectsDoubleDot(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        view('../../etc/passwd', []);
+    }
+
+    public function testViewRejectsParentDirSegment(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        view('../secret', []);
+    }
+
+    public function testViewRejectsNullByteAlone(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        view("home\0", []);
+    }
+
+    // --- view() valid path ---
+
+    public function testViewRendersValidView(): void
+    {
+        $tmpDir = sys_get_temp_dir();
+        $viewFile = $tmpDir . DIRECTORY_SEPARATOR . 'test_valid_view.php';
+        file_put_contents($viewFile, '<?php ?>');
+
+        try {
+            view('test_valid_view', [], $tmpDir);
+        } catch (\InvalidArgumentException $e) {
+            $this->fail('view() should not reject a valid view path: ' . $e->getMessage());
+        } finally {
+            @unlink($viewFile);
+        }
+
+        $this->addToAssertionCount(1);
+    }
 }

@@ -30,7 +30,25 @@ function redirect(string $path)
  */
 function view(string $string, $element, string $path = 'views')
 {
+    if (strpos($string, "\0") !== false) {
+        throw new \InvalidArgumentException('Invalid view name: null bytes are not allowed.');
+    }
+
+    if (strpos($string, '..') !== false) {
+        throw new \InvalidArgumentException('Invalid view name: path traversal sequences are not allowed.');
+    }
+
+    $resolvedBase = realpath($path);
+    if ($resolvedBase === false) {
+        throw new \InvalidArgumentException('Invalid view: base directory does not exist.');
+    }
+
+    $resolvedPath = realpath($resolvedBase . DIRECTORY_SEPARATOR . $string . '.php');
+    if ($resolvedPath === false || strpos($resolvedPath, $resolvedBase . DIRECTORY_SEPARATOR) !== 0) {
+        throw new \InvalidArgumentException('Invalid view: resolved path is outside the allowed views directory.');
+    }
+
     $array = is_array($element) ? $element : json_decode(json_encode($element), true);
     extract($array);
-    include $path . DIRECTORY_SEPARATOR . "{$string}.php";
+    include $resolvedPath;
 }
