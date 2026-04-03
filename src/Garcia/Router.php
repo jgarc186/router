@@ -267,7 +267,7 @@ class Router
     private static function handleNotFound()
     {
         header('HTTP/1.0 404 Not Found');
-        view('error', ['message' => '404 Not Found']);
+        view('error', ['message' => '404 Not Found'], __DIR__ . '/views');
     }
 
     /**

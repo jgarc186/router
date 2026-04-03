@@ -81,4 +81,111 @@ class HelpersTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    // --- view() path traversal ---
+
+    public function testViewRejectsNullByte(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('null bytes are not allowed');
+        view("foo\0../../etc/passwd", []);
+    }
+
+    public function testViewRejectsDoubleDot(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('path traversal sequences are not allowed');
+        view('../../etc/passwd', []);
+    }
+
+    public function testViewRejectsParentDirSegment(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('path traversal sequences are not allowed');
+        view('../secret', []);
+    }
+
+    public function testViewRejectsNullByteAlone(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('null bytes are not allowed');
+        view("home\0", []);
+    }
+
+    public function testViewRejectsSymlinkEscape(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Symlink creation requires elevated privileges on Windows.');
+        }
+
+        $tmpDir    = sys_get_temp_dir();
+        $viewsDir  = $tmpDir . DIRECTORY_SEPARATOR . 'test_views_symlink_' . uniqid();
+        mkdir($viewsDir);
+
+        $outsideFile = $tmpDir . DIRECTORY_SEPARATOR . 'outside_secret_' . uniqid() . '.php';
+        file_put_contents($outsideFile, '<?php echo "secret"; ?>');
+
+        $symlinkPath = $viewsDir . DIRECTORY_SEPARATOR . 'escaped_view.php';
+        symlink($outsideFile, $symlinkPath);
+
+        try {
+            $this->expectException(\InvalidArgumentException::class);
+            $this->expectExceptionMessage('outside the allowed views directory');
+            view('escaped_view', [], $viewsDir);
+        } finally {
+            @unlink($symlinkPath);
+            @unlink($outsideFile);
+            @rmdir($viewsDir);
+        }
+    }
+
+    // --- view() valid paths ---
+
+    public function testViewRendersValidView(): void
+    {
+        $tmpDir   = sys_get_temp_dir();
+        $viewFile = $tmpDir . DIRECTORY_SEPARATOR . 'test_valid_view.php';
+        file_put_contents($viewFile, '<?php echo "hello-view"; ?>');
+
+        ob_start();
+        try {
+            view('test_valid_view', [], $tmpDir);
+        } catch (\InvalidArgumentException $e) {
+            ob_end_clean();
+            @unlink($viewFile);
+            $this->fail('view() should not reject a valid view path: ' . $e->getMessage());
+        }
+        $output = ob_get_clean();
+        @unlink($viewFile);
+
+        $this->assertSame('hello-view', $output);
+    }
+
+    public function testViewRendersSubdirectoryView(): void
+    {
+        $tmpDir   = sys_get_temp_dir();
+        $viewsDir = $tmpDir . DIRECTORY_SEPARATOR . 'test_views_sub_' . uniqid();
+        $subDir   = $viewsDir . DIRECTORY_SEPARATOR . 'admin';
+        mkdir($subDir, 0777, true);
+
+        $viewFile = $subDir . DIRECTORY_SEPARATOR . 'dashboard.php';
+        file_put_contents($viewFile, '<?php echo "admin-dashboard"; ?>');
+
+        ob_start();
+        try {
+            view('admin/dashboard', [], $viewsDir);
+        } catch (\InvalidArgumentException $e) {
+            ob_end_clean();
+            @unlink($viewFile);
+            @rmdir($subDir);
+            @rmdir($viewsDir);
+            $this->fail('view() should allow subdirectory views: ' . $e->getMessage());
+        }
+        $output = ob_get_clean();
+        @unlink($viewFile);
+        @rmdir($subDir);
+        @rmdir($viewsDir);
+
+        $this->assertSame('admin-dashboard', $output);
+    }
 }
