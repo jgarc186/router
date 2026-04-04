@@ -143,6 +143,13 @@ class HelpersTest extends TestCase
         }
     }
 
+    public function testViewRejectsNonexistentBaseDirectory(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('base directory does not exist');
+        view('home', [], '/nonexistent/path/that/cannot/exist');
+    }
+
     // --- view() valid paths ---
 
     public function testViewRendersValidView(): void
@@ -156,14 +163,12 @@ class HelpersTest extends TestCase
         ob_start();
         try {
             view($viewName, [], $tmpDir);
-            $output = ob_get_clean();
-            $this->assertSame('hello-view', $output);
-        } catch (\InvalidArgumentException $e) {
-            ob_end_clean();
-            $this->fail('view() should not reject a valid view path: ' . $e->getMessage());
         } finally {
+            $output = ob_get_clean();
             @unlink($viewFile);
         }
+
+        $this->assertSame('hello-view', $output);
     }
 
     public function testViewRendersSubdirectoryView(): void
@@ -179,15 +184,13 @@ class HelpersTest extends TestCase
         ob_start();
         try {
             view('admin/dashboard', [], $viewsDir);
-            $output = ob_get_clean();
-            $this->assertSame('admin-dashboard', $output);
-        } catch (\InvalidArgumentException $e) {
-            ob_end_clean();
-            $this->fail('view() should allow subdirectory views: ' . $e->getMessage());
         } finally {
+            $output = ob_get_clean();
             @unlink($viewFile);
             @rmdir($subDir);
             @rmdir($viewsDir);
         }
+
+        $this->assertSame('admin-dashboard', $output);
     }
 }

@@ -49,11 +49,16 @@ function view(string $string, $element, string $path = __DIR__ . '/views')
     if ($resolvedPath === false) {
         throw new \InvalidArgumentException('View not found.');
     }
+    // Rely on realpath() not returning a trailing separator, so appending
+    // DIRECTORY_SEPARATOR prevents a prefix collision (e.g. /var/views vs /var/views_evil).
     if (strpos($resolvedPath, $resolvedBase . DIRECTORY_SEPARATOR) !== 0) {
         throw new \InvalidArgumentException('Invalid view: resolved path is outside the allowed views directory.');
     }
 
+    // Capture the validated path before extract() so that a crafted $element key
+    // (e.g. ['resolvedPath' => '/etc/passwd']) cannot overwrite it.
+    $__viewPath = $resolvedPath;
     $array = is_array($element) ? $element : json_decode(json_encode($element), true);
     extract($array);
-    include $resolvedPath;
+    include $__viewPath;
 }
