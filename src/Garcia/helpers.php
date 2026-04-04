@@ -28,9 +28,38 @@ function redirect(string $path)
  * @param string $path - Path to the views directory
  * @return void
  */
-function view(string $string, $element, string $path = 'views')
+function view(string $string, $element, ?string $path = null)
 {
+    $path = $path ?? __DIR__ . '/views';
+    if (strpos($string, "\0") !== false) {
+        throw new \InvalidArgumentException('Invalid view name: null bytes are not allowed.');
+    }
+
+    // Defense-in-depth: reject explicit path-traversal segments before hitting the filesystem.
+    // The realpath() containment check below is the authoritative guard.
+    if (preg_match('#(^|[/\\\\])\.\.($|[/\\\\])#', $string)) {
+        throw new \InvalidArgumentException('Invalid view name: path traversal sequences are not allowed.');
+    }
+
+    $resolvedBase = realpath($path);
+    if ($resolvedBase === false) {
+        throw new \InvalidArgumentException('Invalid view: base directory does not exist.');
+    }
+
+    $resolvedPath = realpath($resolvedBase . DIRECTORY_SEPARATOR . $string . '.php');
+    if ($resolvedPath === false) {
+        throw new \InvalidArgumentException('View not found.');
+    }
+    // Rely on realpath() not returning a trailing separator, so appending
+    // DIRECTORY_SEPARATOR prevents a prefix collision (e.g. /var/views vs /var/views_evil).
+    if (strpos($resolvedPath, $resolvedBase . DIRECTORY_SEPARATOR) !== 0) {
+        throw new \InvalidArgumentException('Invalid view: resolved path is outside the allowed views directory.');
+    }
+
+    // Capture the validated path and use EXTR_SKIP so that a crafted $element key
+    // (e.g. ['__viewPath' => '/etc/passwd']) cannot overwrite it.
+    $__viewPath = $resolvedPath;
     $array = is_array($element) ? $element : json_decode(json_encode($element), true);
-    extract($array);
-    include $path . DIRECTORY_SEPARATOR . "{$string}.php";
+    extract($array, EXTR_SKIP);
+    include $__viewPath;
 }
