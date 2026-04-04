@@ -28,8 +28,9 @@ function redirect(string $path)
  * @param string $path - Path to the views directory
  * @return void
  */
-function view(string $string, $element, string $path = __DIR__ . '/views')
+function view(string $string, $element, ?string $path = null)
 {
+    $path = $path ?? __DIR__ . '/views';
     if (strpos($string, "\0") !== false) {
         throw new \InvalidArgumentException('Invalid view name: null bytes are not allowed.');
     }

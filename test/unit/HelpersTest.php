@@ -143,6 +143,24 @@ class HelpersTest extends TestCase
         }
     }
 
+    public function testViewAllowsDoubleDotWithinFilename(): void
+    {
+        // 'view..backup' contains .. but not as a path segment — must not be rejected.
+        $tmpDir   = sys_get_temp_dir();
+        $viewFile = $tmpDir . DIRECTORY_SEPARATOR . 'view..backup.php';
+        file_put_contents($viewFile, '<?php echo "ok"; ?>');
+
+        ob_start();
+        try {
+            view('view..backup', [], $tmpDir);
+        } finally {
+            $output = ob_get_clean();
+            @unlink($viewFile);
+        }
+
+        $this->assertSame('ok', $output);
+    }
+
     public function testViewElementCannotOverwriteInternalPath(): void
     {
         $tmpDir   = sys_get_temp_dir();
