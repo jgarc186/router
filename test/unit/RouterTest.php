@@ -252,4 +252,55 @@ class RouterTest extends TestCase
 
         $this->assertSame('{"status":"ok"}', $output);
     }
+
+    public function testMiddlewareAppliesOnlyToLastRegisteredRoute(): void
+    {
+        $middleware = static function () {
+        };
+
+        Router::get('/home', fn () => 'home');
+        Router::get('/admin', fn () => 'admin')->middleware($middleware);
+
+        $routes = Router::getRoutes();
+        $this->assertCount(2, $routes);
+        $this->assertCount(0, $routes[0]['middleware']);
+        $this->assertCount(1, $routes[1]['middleware']);
+        $this->assertSame($middleware, $routes[1]['middleware'][0]);
+    }
+
+    public function testSubsequentMiddlewareDoesNotAffectPreviouslyRegisteredRoutes(): void
+    {
+        $middlewareA = static function () {
+        };
+        $middlewareB = static function () {
+        };
+
+        Router::get('/a', fn () => 'a')->middleware($middlewareA);
+        Router::get('/b', fn () => 'b')->middleware($middlewareB);
+
+        $routes = Router::getRoutes();
+        $this->assertCount(2, $routes);
+        $this->assertCount(1, $routes[0]['middleware']);
+        $this->assertSame($middlewareA, $routes[0]['middleware'][0]);
+        $this->assertCount(1, $routes[1]['middleware']);
+        $this->assertSame($middlewareB, $routes[1]['middleware'][0]);
+    }
+
+    public function testResourceMiddlewareAppliesToAllGeneratedRoutesOnly(): void
+    {
+        $middleware = static function () {
+        };
+
+        Router::get('/public', fn () => 'public');
+        Router::resource('/tests', FakeController::class)->middleware($middleware);
+
+        $routes = Router::getRoutes();
+        $this->assertCount(7, $routes);
+        $this->assertCount(0, $routes[0]['middleware']);
+
+        for ($idx = 1; $idx <= 6; $idx++) {
+            $this->assertCount(1, $routes[$idx]['middleware']);
+            $this->assertSame($middleware, $routes[$idx]['middleware'][0]);
+        }
+    }
 }

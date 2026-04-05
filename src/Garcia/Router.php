@@ -12,6 +12,11 @@ class Router
     private static array $routes = [];
 
     /**
+     * @var array<int> - Indexes of the most recently registered route(s)
+     */
+    private static array $lastAddedRouteIndexes = [];
+
+    /**
      * Sets a new route.
      *
      * @param string $method - HTTP method
@@ -27,14 +32,14 @@ class Router
             'handler' => $handler,
             'middleware' => []
         ];
+
+        self::$lastAddedRouteIndexes = [count(self::$routes) - 1];
     }
 
     public function middleware(callable $middleware)
     {
-        foreach (self::$routes as $idx => $route) {
-            if (isset(self::$routes[$idx])) {
-                self::$routes[$idx]['middleware'][] = $middleware;
-            }
+        foreach (self::$lastAddedRouteIndexes as $idx) {
+            self::$routes[$idx]['middleware'][] = $middleware;
         }
 
         return $this;
@@ -50,12 +55,17 @@ class Router
      */
     public static function resource(string $path, string $className)
     {
+        $startIndex = count(self::$routes);
+
         self::addRoute('GET', $path, fn () => (new $className())->index());
         self::addRoute('POST', $path, fn ($params) => (new $className())->store($params));
         self::addRoute('GET', "$path/:id", fn ($params) => (new $className())->show($params));
         self::addRoute('PATCH', "$path/:id", fn ($params) => (new $className())->update($params));
         self::addRoute('PUT', "$path/:id", fn ($params) => (new $className())->update($params));
         self::addRoute('DELETE', "$path/:id", fn ($params) => (new $className())->destroy($params));
+
+        self::$lastAddedRouteIndexes = range($startIndex, count(self::$routes) - 1);
+
         return new static();
     }
 
@@ -319,5 +329,6 @@ class Router
     public static function clearRoutes(): void
     {
         self::$routes = [];
+        self::$lastAddedRouteIndexes = [];
     }
 }
