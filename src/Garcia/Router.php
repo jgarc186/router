@@ -279,7 +279,7 @@ class Router
     public static function run()
     {
         $method = $_SERVER['REQUEST_METHOD'];
-        $uri = $_SERVER['REQUEST_URI'];
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/';
 
         self::handleMiddleware($method, $uri);
 
