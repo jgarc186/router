@@ -115,6 +115,34 @@ class RouterTest extends TestCase
         $this->assertSame('{"id":"42"}', $output);
     }
 
+    public function testRunStripsQueryStringForStaticRoute(): void
+    {
+        Router::get('/health', function () {
+            return 'ok';
+        });
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI']    = '/health?foo=bar';
+        ob_start();
+        Router::run();
+        $output = ob_get_clean();
+
+        $this->assertSame('ok', $output);
+    }
+
+    public function testRunStripsQueryStringForDynamicRoute(): void
+    {
+        Router::get('/users/:id', function (array $params) {
+            return json_encode($params);
+        });
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI']    = '/users/42?include=posts';
+        ob_start();
+        Router::run();
+        $output = ob_get_clean();
+
+        $this->assertSame('{"id":"42"}', $output);
+    }
+
     /**
      * @runInSeparateProcess
      */
