@@ -179,7 +179,7 @@ class Router
                     $params = array_merge($params, $_POST);
                 }
                 self::callHandler($route['handler'], $params);
-                $found = true;
+                return;
             }
         }
 

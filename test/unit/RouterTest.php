@@ -280,4 +280,28 @@ class RouterTest extends TestCase
 
         $this->assertSame('{"status":"ok"}', $output);
     }
+
+    public function testOnlyFirstMatchingRouteExecutesWhenAnyAndGetOverlap(): void
+    {
+        Router::any('/test', fn () => 'from-any');
+        Router::get('/test', fn () => 'from-get');
+
+        ob_start();
+        Router::handleRequest('GET', '/test');
+        $output = ob_get_clean();
+
+        $this->assertSame('from-any', $output);
+    }
+
+    public function testOnlyFirstMatchingRouteExecutesWithTwoGetRoutes(): void
+    {
+        Router::get('/dup', fn () => 'first');
+        Router::get('/dup', fn () => 'second');
+
+        ob_start();
+        Router::handleRequest('GET', '/dup');
+        $output = ob_get_clean();
+
+        $this->assertSame('first', $output);
+    }
 }
