@@ -304,4 +304,55 @@ class RouterTest extends TestCase
 
         $this->assertSame('first', $output);
     }
+
+    public function testFormEncodedBodyParsedFromPost(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/x-www-form-urlencoded';
+        $_POST = ['name' => 'Alice', 'age' => '30'];
+
+        Router::post('/submit', fn ($params) => "{$params['name']}:{$params['age']}");
+
+        ob_start();
+        Router::handleRequest('POST', '/submit');
+        $output = ob_get_clean();
+
+        $this->assertSame('Alice:30', $output);
+
+        unset($_SERVER['CONTENT_TYPE']);
+        $_POST = [];
+    }
+
+    public function testMultipartFormDataBodyParsedFromPost(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'multipart/form-data; boundary=----boundary';
+        $_POST = ['file_name' => 'upload.txt', 'size' => '1024'];
+
+        Router::post('/upload', fn ($params) => "{$params['file_name']}:{$params['size']}");
+
+        ob_start();
+        Router::handleRequest('POST', '/upload');
+        $output = ob_get_clean();
+
+        $this->assertSame('upload.txt:1024', $output);
+
+        unset($_SERVER['CONTENT_TYPE']);
+        $_POST = [];
+    }
+
+    public function testUnknownContentTypeFallsBackToPost(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'text/plain';
+        $_POST = ['fallback' => 'yes'];
+
+        Router::post('/fallback', fn ($params) => $params['fallback'] ?? 'missing');
+
+        ob_start();
+        Router::handleRequest('POST', '/fallback');
+        $output = ob_get_clean();
+
+        $this->assertSame('yes', $output);
+
+        unset($_SERVER['CONTENT_TYPE']);
+        $_POST = [];
+    }
 }

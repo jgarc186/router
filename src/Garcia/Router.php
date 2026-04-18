@@ -170,13 +170,10 @@ class Router
         foreach (self::$routes as $route) {
             if ($route['method'] === $method && self::matchPath($route['path'], $uri, $params)) {
                 if ($method === 'POST' || $method === 'PUT' || $method === 'PATCH') {
-                    // Capture the POST data
-                    $json = file_get_contents('php://input');
-                    $body = json_decode($json, true);
-                    $array = !empty($body) ? $body : [];
-                    $_REQUEST = [...$_REQUEST, ...$array];
-                    $_POST = $_REQUEST;
-                    $params = array_merge($params, $_POST);
+                    $body = self::parseBody();
+                    $_POST    = array_merge($_POST, $body);
+                    $_REQUEST = array_merge($_REQUEST, $body);
+                    $params   = array_merge($params, $body);
                 }
                 self::callHandler($route['handler'], $params);
                 return;
@@ -218,6 +215,25 @@ class Router
         }
 
         return true;
+    }
+
+    private static function parseBody(): array
+    {
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+
+        if (str_contains($contentType, 'application/json')) {
+            return json_decode(file_get_contents('php://input'), true) ?? [];
+        }
+
+        if (str_contains($contentType, 'application/x-www-form-urlencoded')
+            || str_contains($contentType, 'multipart/form-data')
+        ) {
+            return $_POST;
+        }
+
+        // Unknown/missing Content-Type: try JSON, fall back to $_POST
+        $raw = file_get_contents('php://input');
+        return json_decode($raw, true) ?? $_POST ?? [];
     }
 
     /**
