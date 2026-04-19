@@ -43,7 +43,7 @@ Router::get('/view', fn () => [
 Router::post('/health', fn ($params) => "Hello, {$params['name']} {$params['last']}!");
 
 // Example of rendering
-Router::get('/redirect', fn () => redirect('http://www.example.com'));
+Router::get('/redirect', fn () => redirect('/home'));
 
 // Example of using the resource method
 class Test {
@@ -87,6 +87,14 @@ This method is used to redirect to another URL. It takes one parameter: the URL 
 
 ### view
 This method is used to render a view. It takes one parameter: the name of the view to render.
+
+> **Security warning:** Never pass raw user input directly as the view name or path. The function enforces the following constraints and throws `\InvalidArgumentException` on violation:
+> - View names containing `../` path traversal sequences are rejected.
+> - Null bytes in the view name are rejected.
+> - The resolved file path must remain within the base views directory (symlink escapes are blocked via `realpath()`).
+> - The base directory must exist.
+>
+> Always validate and whitelist view names before passing them to `view()`.
 
 ### json
 This method is used to return a JSON response. It takes one parameter: the data to be returned as JSON.
