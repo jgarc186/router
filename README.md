@@ -88,6 +88,8 @@ This method is used to redirect to another URL. It takes one parameter: the URL 
 ### view
 This method is used to render a view. It takes one parameter: the name of the view to render.
 
+The built-in 404 handler always resolves its error view relative to the library's own directory (`__DIR__ . '/views'`), so it works correctly regardless of the application's current working directory.
+
 > **Security warning:** Never pass raw user input directly as the view name or path. The function enforces the following constraints and throws `\InvalidArgumentException` on violation:
 > - View names containing `../` path traversal sequences are rejected.
 > - Null bytes in the view name are rejected.

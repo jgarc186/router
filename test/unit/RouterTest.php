@@ -155,6 +155,40 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('IMPORTANT:', $output);
     }
 
+    /**
+     * @runInSeparateProcess
+     */
+    public function testHandleNotFoundRendersFromLibraryDirWhenCwdIsProjectRoot(): void
+    {
+        $originalCwd = getcwd();
+        chdir(dirname(__DIR__, 2));
+
+        ob_start();
+        Router::handleRequest('GET', '/nonexistent');
+        $output = ob_get_clean();
+
+        chdir($originalCwd);
+
+        $this->assertStringContainsString('IMPORTANT:', $output);
+    }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function testHandleNotFoundRendersFromLibraryDirWhenCwdIsUnrelated(): void
+    {
+        $originalCwd = getcwd();
+        chdir(sys_get_temp_dir());
+
+        ob_start();
+        Router::handleRequest('GET', '/nonexistent');
+        $output = ob_get_clean();
+
+        chdir($originalCwd);
+
+        $this->assertStringContainsString('IMPORTANT:', $output);
+    }
+
     public function testErrorViewEscapesXss(): void
     {
         $message = '<script>alert("xss")</script>';
