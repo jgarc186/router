@@ -47,6 +47,7 @@ class Router
      *
      * @param string $path - URL path
      * @param string $className - This is the name of the class that we use instantiate callbacks
+     * @return static
      */
     public static function resource(string $path, string $className)
     {
@@ -64,7 +65,7 @@ class Router
      *
      * @param string $path - URL path
      * @param callable $handler - Route handler
-     * @return object
+     * @return static
      */
     public static function get(string $path, callable $handler)
     {
@@ -77,7 +78,7 @@ class Router
      *
      * @param string $path - URL path
      * @param callable $handler - Route handler
-     * @return void
+     * @return static
      */
     public static function post(string $path, callable $handler)
     {
@@ -90,7 +91,7 @@ class Router
      *
      * @param string $path - URL path
      * @param callable $handler - Route handler
-     * @return void
+     * @return static
      */
     public static function put(string $path, callable $handler)
     {
@@ -103,7 +104,7 @@ class Router
      *
      * @param string $path - URL path
      * @param callable $handler - Route handler
-     * @return void
+     * @return static
      */
     public static function delete(string $path, callable $handler)
     {
@@ -116,7 +117,7 @@ class Router
      *
      * @param string $path - URL path
      * @param callable $handler - Route handler
-     * @return void
+     * @return static
      */
     public static function patch(string $path, callable $handler)
     {
@@ -129,7 +130,7 @@ class Router
      *
      * @param string $path - URL path
      * @param callable $handler - Route handler
-     * @return void
+     * @return static
      */
     public static function options(string $path, callable $handler)
     {
@@ -142,7 +143,7 @@ class Router
      *
      * @param string $path - URL path
      * @param callable $handler - Route handler
-     * @return void
+     * @return static
      */
     public static function any(string $path, callable $handler)
     {
