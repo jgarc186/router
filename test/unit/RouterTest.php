@@ -448,4 +448,106 @@ class RouterTest extends TestCase
         unset($_SERVER['CONTENT_TYPE']);
         $_POST = [];
     }
+
+    // matchPath() coverage
+
+    public function testMatchPathExtractsMultipleParams(): void
+    {
+        Router::get('/users/:id/posts/:postId', fn ($params) => json_encode($params));
+
+        ob_start();
+        Router::handleRequest('GET', '/users/42/posts/7');
+        $output = ob_get_clean();
+
+        $this->assertSame('{"id":"42","postId":"7"}', $output);
+    }
+
+    public function testMatchPathMatchesUriWithTrailingSlash(): void
+    {
+        Router::get('/users/:id', fn ($params) => $params['id']);
+
+        ob_start();
+        Router::handleRequest('GET', '/users/42/');
+        $output = ob_get_clean();
+
+        $this->assertSame('42', $output);
+    }
+
+    public function testMatchPathMatchesRouteWithTrailingSlash(): void
+    {
+        Router::get('/users/:id/', fn ($params) => $params['id']);
+
+        ob_start();
+        Router::handleRequest('GET', '/users/42');
+        $output = ob_get_clean();
+
+        $this->assertSame('42', $output);
+    }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function testMatchPathEmptySegmentDoesNotMatch(): void
+    {
+        Router::get('/users/:id', fn ($params) => $params['id']);
+
+        ob_start();
+        Router::handleRequest('GET', '/users//');
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('IMPORTANT:', $output);
+    }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function testMatchPathTooManySegmentsDoesNotMatch(): void
+    {
+        Router::get('/users/:id', fn ($params) => $params['id']);
+
+        ob_start();
+        Router::handleRequest('GET', '/users/42/extra');
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('IMPORTANT:', $output);
+    }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function testMatchPathTooFewSegmentsDoesNotMatch(): void
+    {
+        Router::get('/users/:id/posts/:postId', fn ($params) => json_encode($params));
+
+        ob_start();
+        Router::handleRequest('GET', '/users/42');
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('IMPORTANT:', $output);
+    }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function testMatchPathStaticSegmentMismatchDoesNotMatch(): void
+    {
+        Router::get('/users/profile', fn () => 'profile');
+
+        ob_start();
+        Router::handleRequest('GET', '/users/settings');
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('IMPORTANT:', $output);
+    }
+
+    public function testMatchPathParamAtFirstPosition(): void
+    {
+        Router::get('/:id/profile', fn ($params) => $params['id']);
+
+        ob_start();
+        Router::handleRequest('GET', '/42/profile');
+        $output = ob_get_clean();
+
+        $this->assertSame('42', $output);
+    }
 }
