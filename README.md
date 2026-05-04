@@ -71,9 +71,9 @@ Router::run();
 
 ## API
 the router has the following methods:
-get, post, put, patch, delete, options, head, any, addRoute, run, redirect, view, json, and render.
+get, post, put, patch, delete, options, any, addRoute, run, redirect, view, middleware, and resource.
 
-### get, post, put, patch, delete, options, head, any
+### get, post, put, patch, delete, options, any
 These methods are used to define routes. They take two parameters: the route and the handler. The route can contain parameters, which are defined by a colon followed by the parameter name. The handler can be a function or a string. If it is a string, it is assumed to be the name of a function to be called.
 
 ### addRoute
@@ -98,11 +98,16 @@ The built-in 404 handler always resolves its error view relative to the library'
 >
 > Always validate and whitelist view names before passing them to `view()`.
 
-### json
-This method is used to return a JSON response. It takes one parameter: the data to be returned as JSON.
+### middleware
+This method is used to attach middleware to the most recently defined route. It is called on the instance returned by a route-registration method, enabling chaining:
 
-### render
-This method is used to render a view. It takes one parameter: the name of the view to render.
+```php
+Router::get('/admin', fn () => 'Admin area')->middleware(function () {
+    if (!isset($_SESSION['user'])) {
+        redirect('/login');
+    }
+});
+```
 
 ### resource
 This method sets multiple routes such a Get, Post, Patch, Put, Delete and sets the corresponding callbacks.

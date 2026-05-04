@@ -1,0 +1,63 @@
+name: Doc Accuracy Check
+
+on:
+  push:
+    paths:
+      - 'README.md'
+      - 'src/**'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'src/**'
+
+jobs:
+  doc-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify documented methods exist in source
+        run: |
+          # Methods that must exist as public static functions on Router
+          ROUTER_METHODS="get post put patch delete options any addRoute run resource middleware"
+          # Helper functions that must exist in helpers.php
+          HELPER_FUNCTIONS="redirect view"
+
+          FAILED=0
+
+          for method in $ROUTER_METHODS; do
+            # Check README documents the method
+            if ! grep -qE "^###? .*\b${method}\b|^${method}," README.md; then
+              echo "WARN: '${method}' not found in README API section"
+            fi
+            # Check method exists in Router.php
+            if ! grep -qE "public (static )?function ${method}\b" src/Garcia/Router.php; then
+              echo "FAIL: '${method}' is documented but not found in Router.php"
+              FAILED=1
+            fi
+          done
+
+          for fn in $HELPER_FUNCTIONS; do
+            if ! grep -qE "^function ${fn}\b" src/Garcia/helpers.php; then
+              echo "FAIL: helper '${fn}' is documented but not found in helpers.php"
+              FAILED=1
+            fi
+          done
+
+          # Detect methods documented under ### headings that don't exist in source
+          grep -oP '(?<=^### )[\w, ]+' README.md | tr ', ' '\n' | grep -v '^$' | sort -u | while read -r name; do
+            if grep -qE "^function ${name}\b" src/Garcia/helpers.php; then
+              continue
+            fi
+            if grep -qE "public (static )?function ${name}\b" src/Garcia/Router.php; then
+              continue
+            fi
+            echo "FAIL: README documents '${name}' but it does not exist in source"
+            echo 1 > /tmp/doc_check_failed
+          done
+
+          if [ -f /tmp/doc_check_failed ] || [ "$FAILED" -eq 1 ]; then
+            exit 1
+          fi
+
+          echo "All documented methods verified in source."
