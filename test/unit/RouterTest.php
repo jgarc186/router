@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 class MockPhpInputStream
 {
     public static string $input = '';
+    public static bool $active = false;
     public $context;
     private int $position = 0;
 
@@ -57,15 +58,16 @@ class RouterTest extends TestCase
         MockPhpInputStream::$input = $input;
         stream_wrapper_unregister('php');
         stream_wrapper_register('php', MockPhpInputStream::class);
+        MockPhpInputStream::$active = true;
     }
 
     private function restorePhpStreamWrapper(): void
     {
-        $wrappers = stream_get_wrappers();
-        if (in_array('php', $wrappers, true)) {
-            stream_wrapper_unregister('php');
+        if (MockPhpInputStream::$active) {
+            stream_wrapper_restore('php');
+            MockPhpInputStream::$active = false;
         }
-        stream_wrapper_restore('php');
+        MockPhpInputStream::$input = '';
     }
 
     public function testAddRoute(): void
@@ -486,6 +488,7 @@ class RouterTest extends TestCase
 
     public function testFirstDeclaredDynamicRouteBeatsLaterStaticRouteForSamePath(): void
     {
+        // Documents current first-match behavior; precedence rules may be revisited later.
         Router::get('/users/:id', fn () => 'dynamic');
         Router::get('/users/list', fn () => 'static');
 
@@ -798,6 +801,11 @@ class RouterTest extends TestCase
     public function testMiddlewareScopesToMatchedRouteOnly(): void
     {
         $events = [];
+
+        Router::get('/pre-existing', function () use (&$events) {
+            $events[] = 'handler-pre';
+            return 'pre';
+        });
 
         Router::get('/a', function () use (&$events) {
             $events[] = 'handler-a';
