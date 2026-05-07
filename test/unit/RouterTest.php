@@ -5,11 +5,67 @@ namespace Test\Unit;
 use Garcia\Router;
 use PHPUnit\Framework\TestCase;
 
+class MockPhpInputStream
+{
+    public static string $input = '';
+    public $context;
+    private int $position = 0;
+
+    public function stream_open($path, $mode, $options, &$opened_path): bool
+    {
+        $this->position = 0;
+        return true;
+    }
+
+    public function stream_read(int $count): string
+    {
+        $chunk = substr(self::$input, $this->position, $count);
+        $this->position += strlen($chunk);
+        return $chunk;
+    }
+
+    public function stream_eof(): bool
+    {
+        return $this->position >= strlen(self::$input);
+    }
+
+    public function stream_stat(): array
+    {
+        return [];
+    }
+}
+
 class RouterTest extends TestCase
 {
     protected function setUp(): void
     {
         Router::clearRoutes();
+        $_POST = [];
+        $_REQUEST = [];
+    }
+
+    protected function tearDown(): void
+    {
+        $this->restorePhpStreamWrapper();
+        unset($_SERVER['CONTENT_TYPE'], $_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+        $_POST = [];
+        $_REQUEST = [];
+    }
+
+    private function mockPhpInput(string $input): void
+    {
+        MockPhpInputStream::$input = $input;
+        stream_wrapper_unregister('php');
+        stream_wrapper_register('php', MockPhpInputStream::class);
+    }
+
+    private function restorePhpStreamWrapper(): void
+    {
+        $wrappers = stream_get_wrappers();
+        if (in_array('php', $wrappers, true)) {
+            stream_wrapper_unregister('php');
+        }
+        stream_wrapper_restore('php');
     }
 
     public function testAddRoute(): void
@@ -183,6 +239,36 @@ class RouterTest extends TestCase
         $output = ob_get_clean();
 
         $this->assertSame('root', $output);
+    }
+
+    public function testRunIgnoresComplexQueryStringDuringRouteMatch(): void
+    {
+        Router::get('/search', function () {
+            return 'ok';
+        });
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/search?q=router&tag=php&tag=tests&empty=';
+
+        ob_start();
+        Router::run();
+        $output = ob_get_clean();
+
+        $this->assertSame('ok', $output);
+    }
+
+    public function testRunPreservesEncodedPathWhileIgnoringQueryString(): void
+    {
+        Router::get('/files/a%2Fb', function () {
+            return 'encoded';
+        });
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/files/a%2Fb?download=1';
+
+        ob_start();
+        Router::run();
+        $output = ob_get_clean();
+
+        $this->assertSame('encoded', $output);
     }
 
     /**
@@ -398,6 +484,18 @@ class RouterTest extends TestCase
         $this->assertSame('first', $output);
     }
 
+    public function testFirstDeclaredDynamicRouteBeatsLaterStaticRouteForSamePath(): void
+    {
+        Router::get('/users/:id', fn () => 'dynamic');
+        Router::get('/users/list', fn () => 'static');
+
+        ob_start();
+        Router::handleRequest('GET', '/users/list');
+        $output = ob_get_clean();
+
+        $this->assertSame('dynamic', $output);
+    }
+
     public function testFormEncodedBodyParsedFromPost(): void
     {
         $_SERVER['CONTENT_TYPE'] = 'application/x-www-form-urlencoded';
@@ -447,6 +545,90 @@ class RouterTest extends TestCase
 
         unset($_SERVER['CONTENT_TYPE']);
         $_POST = [];
+    }
+
+    public function testJsonBodyParsedFromPost(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/json';
+        $this->mockPhpInput('{"name":"Alice","age":30}');
+
+        Router::post('/json-post', fn ($params) => "{$params['name']}:{$params['age']}");
+
+        ob_start();
+        Router::handleRequest('POST', '/json-post');
+        $output = ob_get_clean();
+
+        $this->assertSame('Alice:30', $output);
+    }
+
+    public function testJsonBodyParsedFromPut(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/json';
+        $this->mockPhpInput('{"title":"Draft","published":false}');
+
+        Router::put('/json-put', fn ($params) => "{$params['title']}:" . ($params['published'] ? '1' : '0'));
+
+        ob_start();
+        Router::handleRequest('PUT', '/json-put');
+        $output = ob_get_clean();
+
+        $this->assertSame('Draft:0', $output);
+    }
+
+    public function testJsonBodyParsedFromPatch(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/json';
+        $this->mockPhpInput('{"status":"active"}');
+
+        Router::patch('/json-patch', fn ($params) => $params['status']);
+
+        ob_start();
+        Router::handleRequest('PATCH', '/json-patch');
+        $output = ob_get_clean();
+
+        $this->assertSame('active', $output);
+    }
+
+    public function testFormEncodedBodyParsedFromPut(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/x-www-form-urlencoded';
+        $_POST = ['name' => 'Taylor', 'city' => 'Boston'];
+
+        Router::put('/form-put', fn ($params) => "{$params['name']}:{$params['city']}");
+
+        ob_start();
+        Router::handleRequest('PUT', '/form-put');
+        $output = ob_get_clean();
+
+        $this->assertSame('Taylor:Boston', $output);
+    }
+
+    public function testFormEncodedBodyParsedFromPatch(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/x-www-form-urlencoded';
+        $_POST = ['role' => 'admin'];
+
+        Router::patch('/form-patch', fn ($params) => $params['role']);
+
+        ob_start();
+        Router::handleRequest('PATCH', '/form-patch');
+        $output = ob_get_clean();
+
+        $this->assertSame('admin', $output);
+    }
+
+    public function testBodyParamsMergeWithRouteParams(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/json';
+        $this->mockPhpInput('{"status":"done"}');
+
+        Router::patch('/tasks/:id', fn ($params) => "{$params['id']}:{$params['status']}");
+
+        ob_start();
+        Router::handleRequest('PATCH', '/tasks/42');
+        $output = ob_get_clean();
+
+        $this->assertSame('42:done', $output);
     }
 
     // matchPath() coverage
@@ -549,5 +731,137 @@ class RouterTest extends TestCase
         $output = ob_get_clean();
 
         $this->assertSame('42', $output);
+    }
+
+    public function testMiddlewareRunsBeforeHandlerForMatchingRoute(): void
+    {
+        $events = [];
+
+        Router::get('/secure', function () use (&$events) {
+            $events[] = 'handler';
+            return 'ok';
+        })->middleware(function () use (&$events) {
+            $events[] = 'middleware';
+        });
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/secure';
+
+        ob_start();
+        Router::run();
+        $output = ob_get_clean();
+
+        $this->assertSame('ok', $output);
+        $this->assertSame(['middleware', 'handler'], $events);
+    }
+
+    public function testMiddlewareDoesNotRunForNonMatchingMethodOrPath(): void
+    {
+        $middlewareCalls = 0;
+
+        Router::get('/secure', fn () => 'ok')
+            ->middleware(function () use (&$middlewareCalls) {
+                $middlewareCalls++;
+            });
+
+        Router::handleMiddleware('POST', '/secure');
+        Router::handleMiddleware('GET', '/other');
+
+        $this->assertSame(0, $middlewareCalls);
+    }
+
+    public function testMiddlewareOrderIsPreservedPerRoute(): void
+    {
+        $events = [];
+
+        Router::get('/ordered', function () use (&$events) {
+            $events[] = 'handler';
+            return 'done';
+        })
+            ->middleware(function () use (&$events) {
+                $events[] = 'first';
+            })
+            ->middleware(function () use (&$events) {
+                $events[] = 'second';
+            });
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/ordered';
+
+        ob_start();
+        Router::run();
+        ob_end_clean();
+
+        $this->assertSame(['first', 'second', 'handler'], $events);
+    }
+
+    public function testMiddlewareScopesToMatchedRouteOnly(): void
+    {
+        $events = [];
+
+        Router::get('/a', function () use (&$events) {
+            $events[] = 'handler-a';
+            return 'a';
+        })->middleware(function () use (&$events) {
+            $events[] = 'mw-a';
+        });
+
+        Router::get('/b', function () use (&$events) {
+            $events[] = 'handler-b';
+            return 'b';
+        })->middleware(function () use (&$events) {
+            $events[] = 'mw-b';
+        });
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/b';
+
+        ob_start();
+        Router::run();
+        $output = ob_get_clean();
+
+        $this->assertSame('b', $output);
+        $this->assertSame(['mw-b', 'handler-b'], $events);
+    }
+
+    public function testHandleRequestBubblesHandlerExceptions(): void
+    {
+        Router::get('/explode', function () {
+            throw new \RuntimeException('handler failed');
+        });
+
+        $level = ob_get_level();
+        ob_start();
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('handler failed');
+            Router::handleRequest('GET', '/explode');
+        } finally {
+            while (ob_get_level() > $level) {
+                ob_end_clean();
+            }
+        }
+    }
+
+    public function testRunBubblesMiddlewareExceptionsBeforeHandlerExecution(): void
+    {
+        Router::get('/secure', function () {
+            return 'never';
+        })->middleware(function () {
+            throw new \RuntimeException('middleware failed');
+        });
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/secure';
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('middleware failed');
+        Router::run();
+    }
+
+    public function testRedirectRejectsInvalidAbsoluteUrlPath(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        redirect('https://example.com');
     }
 }
