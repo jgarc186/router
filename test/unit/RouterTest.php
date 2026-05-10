@@ -3,6 +3,7 @@
 namespace Test\Unit;
 
 use Garcia\Router;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 
 class MockPhpInputStream
@@ -273,9 +274,7 @@ class RouterTest extends TestCase
         $this->assertSame('encoded', $output);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testRunDoesNotMatchDynamicRouteWhenUriContainsEmptySegment(): void
     {
         Router::get('/users/:id', function (array $params) {
@@ -290,9 +289,7 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('IMPORTANT:', $output);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testHandleRequestNotFoundReturns404(): void
     {
         ob_start();
@@ -302,9 +299,7 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('IMPORTANT:', $output);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testHandleNotFoundRendersFromLibraryDirWhenCwdIsProjectRoot(): void
     {
         $originalCwd = getcwd();
@@ -319,9 +314,7 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('IMPORTANT:', $output);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testHandleNotFoundRendersFromLibraryDirWhenCwdIsUnrelated(): void
     {
         $originalCwd = getcwd();
@@ -669,9 +662,7 @@ class RouterTest extends TestCase
         $this->assertSame('42', $output);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testMatchPathEmptySegmentDoesNotMatch(): void
     {
         Router::get('/users/:id', fn ($params) => $params['id']);
@@ -683,9 +674,7 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('IMPORTANT:', $output);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testMatchPathTooManySegmentsDoesNotMatch(): void
     {
         Router::get('/users/:id', fn ($params) => $params['id']);
@@ -697,9 +686,7 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('IMPORTANT:', $output);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testMatchPathTooFewSegmentsDoesNotMatch(): void
     {
         Router::get('/users/:id/posts/:postId', fn ($params) => json_encode($params));
@@ -711,9 +698,7 @@ class RouterTest extends TestCase
         $this->assertStringContainsString('IMPORTANT:', $output);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testMatchPathStaticSegmentMismatchDoesNotMatch(): void
     {
         Router::get('/users/profile', fn () => 'profile');

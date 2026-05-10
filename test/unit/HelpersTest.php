@@ -56,14 +56,12 @@ class HelpersTest extends TestCase
 
     public function testRedirectAcceptsSimpleRelativePath(): void
     {
-        // Wrap in try/catch to ignore the header()/exit that cannot run in CLI.
-        // The important thing is no InvalidArgumentException is thrown beforehand.
+        // redirect() calls exit; so we test only the validation logic here.
+        // The important thing is no InvalidArgumentException is thrown for valid paths.
         try {
-            redirect("/dashboard");
+            validateRedirectPath("/dashboard");
         } catch (\InvalidArgumentException $e) {
             $this->fail("redirect() should not reject a valid relative path: " . $e->getMessage());
-        } catch (\Throwable $e) {
-            // header() or exit may throw in test context — that is acceptable.
         }
 
         $this->addToAssertionCount(1);
@@ -72,11 +70,9 @@ class HelpersTest extends TestCase
     public function testRedirectAcceptsRelativePathWithQuery(): void
     {
         try {
-            redirect("/search?q=hello&page=2");
+            validateRedirectPath("/search?q=hello&page=2");
         } catch (\InvalidArgumentException $e) {
             $this->fail("redirect() should not reject a valid relative path: " . $e->getMessage());
-        } catch (\Throwable $e) {
-            // Acceptable — header/exit side-effects in CLI context.
         }
 
         $this->addToAssertionCount(1);

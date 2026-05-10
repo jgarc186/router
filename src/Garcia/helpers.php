@@ -1,12 +1,12 @@
 <?php
 
 /**
- * Redirects to a new path.
+ * Validates a redirect path, throwing InvalidArgumentException for unsafe values.
  *
- * @param string $path - New path
+ * @param string $path
  * @return void
  */
-function redirect(string $path)
+function validateRedirectPath(string $path): void
 {
     if (preg_match('/[\r\n]/', $path)) {
         throw new \InvalidArgumentException('Invalid redirect path: newline characters are not allowed.');
@@ -15,7 +15,17 @@ function redirect(string $path)
     if (!preg_match('/^\/(?!\/)/', $path)) {
         throw new \InvalidArgumentException('Invalid redirect path: only relative paths starting with / are allowed.');
     }
+}
 
+/**
+ * Redirects to a new path.
+ *
+ * @param string $path - New path
+ * @return void
+ */
+function redirect(string $path): void
+{
+    validateRedirectPath($path);
     header("Location: $path");
     exit;
 }
