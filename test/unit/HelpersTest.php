@@ -177,6 +177,58 @@ class HelpersTest extends TestCase
         $this->assertSame('safe', $output);
     }
 
+    public function testViewElementCannotOverwriteStringParam(): void
+    {
+        $tmpDir    = sys_get_temp_dir();
+        $safeFile  = $tmpDir . DIRECTORY_SEPARATOR . 'test_safe_string_' . uniqid() . '.php';
+        $evilFile  = $tmpDir . DIRECTORY_SEPARATOR . 'test_evil_string_' . uniqid() . '.php';
+        file_put_contents($safeFile, '<?php echo "safe"; ?>');
+        file_put_contents($evilFile, '<?php echo "evil"; ?>');
+
+        $safeName = basename($safeFile, '.php');
+        $evilName = basename($evilFile, '.php');
+
+        ob_start();
+        try {
+            // Attempt to redirect $string to the evil view via extract(); EXTR_SKIP must prevent this.
+            view($safeName, ['string' => $evilName], $tmpDir);
+        } finally {
+            $output = ob_get_clean();
+            @unlink($safeFile);
+            @unlink($evilFile);
+        }
+
+        $this->assertSame('safe', $output);
+    }
+
+    public function testViewElementCannotOverwritePathParam(): void
+    {
+        $base      = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'test_path_overwrite_' . uniqid();
+        $validDir  = $base . DIRECTORY_SEPARATOR . 'views';
+        $evilDir   = $base . DIRECTORY_SEPARATOR . 'evil';
+        mkdir($validDir, 0777, true);
+        mkdir($evilDir, 0777, true);
+
+        $viewName  = 'shared_view';
+        file_put_contents($validDir . DIRECTORY_SEPARATOR . $viewName . '.php', '<?php echo "safe"; ?>');
+        file_put_contents($evilDir  . DIRECTORY_SEPARATOR . $viewName . '.php', '<?php echo "evil"; ?>');
+
+        ob_start();
+        try {
+            // Attempt to redirect $path to the evil directory via extract(); EXTR_SKIP must prevent this.
+            view($viewName, ['path' => $evilDir], $validDir);
+        } finally {
+            $output = ob_get_clean();
+            @unlink($validDir . DIRECTORY_SEPARATOR . $viewName . '.php');
+            @unlink($evilDir  . DIRECTORY_SEPARATOR . $viewName . '.php');
+            @rmdir($validDir);
+            @rmdir($evilDir);
+            @rmdir($base);
+        }
+
+        $this->assertSame('safe', $output);
+    }
+
     public function testViewRejectsNonexistentBaseDirectory(): void
     {
         $this->expectException(\InvalidArgumentException::class);
