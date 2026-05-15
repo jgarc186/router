@@ -37,6 +37,12 @@ function redirect(string $path): void
  * @param object|array $element - Data to be rendered
  * @param string $path - Path to the views directory
  * @return void
+ *
+ * @security extract() is called with EXTR_SKIP so that keys in $element cannot
+ *           overwrite the already-defined local variables ($string, $path,
+ *           $__viewPath, etc.).  All path-safety checks run before extract(),
+ *           and the validated path is stored in $__viewPath — a name unlikely
+ *           to collide with template data even without EXTR_SKIP.
  */
 function view(string $string, $element, ?string $path = null)
 {
