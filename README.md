@@ -18,6 +18,7 @@ composer require josegarcia/router
 require_once __DIR__ . '/vendor/autoload.php';
 
 use Garcia\Router;
+use Garcia\Exceptions\RouterException;
 
 // Example of a simple route
 Router::addRoute('GET', '/health', fn () => 'Hello, world!');
@@ -64,9 +65,17 @@ class Test {
     }
 }
 
-Router::resource('/test', Test::class); 
+Router::resource('/test', Test::class);
 
-Router::run();
+// Unmatched routes are handled automatically: the router sends a 404 header
+// and renders its built-in error view, so no extra code is needed for that case.
+try {
+    Router::run();
+} catch (RouterException $e) {
+    // Thrown when a registered handler is not callable.
+    http_response_code(500);
+    echo 'Router error: ' . $e->getMessage();
+}
 ```
 
 ## API
