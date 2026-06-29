@@ -448,6 +448,23 @@ class RouterTest extends TestCase
         $this->assertSame('hello world', $output);
     }
 
+    public function testCallHandlerWithViewObjectRendersView(): void
+    {
+        $result       = new \stdClass();
+        $result->view = 'error';
+        $result->data = ['message' => 'View response'];
+        $result->path = __DIR__ . '/../../src/Garcia/views';
+
+        Router::get('/view-test', fn () => $result);
+
+        ob_start();
+        Router::handleRequest('GET', '/view-test');
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('IMPORTANT:', $output);
+        $this->assertStringContainsString('View response', $output);
+    }
+
     public function testCallHandlerSideEffectOutputIsDiscarded(): void
     {
         Router::get('/api/warn', function () {
@@ -863,5 +880,25 @@ class RouterTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         redirect('https://example.com');
+    }
+
+    public function testMiddlewareOnlyRunsForRouteItWasRegisteredOn(): void
+    {
+        $calls = [];
+
+        Router::get('/first', fn () => 'first');
+
+        Router::get('/second', fn () => 'second')
+            ->middleware(function () use (&$calls) {
+                $calls[] = 'mw-second';
+            });
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI']    = '/first';
+        ob_start();
+        Router::run();
+        ob_get_clean();
+
+        $this->assertSame([], $calls, 'Middleware for /second must not fire on a /first request');
     }
 }

@@ -31,10 +31,9 @@ class Router
 
     public function middleware(callable $middleware)
     {
-        foreach (self::$routes as $idx => $route) {
-            if (isset(self::$routes[$idx])) {
-                self::$routes[$idx]['middleware'][] = $middleware;
-            }
+        $lastIdx = array_key_last(self::$routes);
+        if ($lastIdx !== null) {
+            self::$routes[$lastIdx]['middleware'][] = $middleware;
         }
 
         return $this;
