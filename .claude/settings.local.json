@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(docker compose run *)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(git mv *)"
     ]
   }
 }

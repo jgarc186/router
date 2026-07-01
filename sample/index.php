@@ -3,6 +3,7 @@
 require_once '../vendor/autoload.php';
 
 use Garcia\Router;
+use Garcia\Helpers;
 use Garcia\Exceptions\RouterException;
 
 // Example of a simple route
@@ -33,7 +34,7 @@ Router::get('/view', fn () => [
 Router::post('/health', fn ($params) => "Hello, {$params['name']} {$params['last']}!");
 
 // Example of rendering
-Router::get('/redirect', fn () => redirect('https://www.example.com'));
+Router::get('/redirect', fn () => Helpers::redirect('https://www.example.com'));
 
 // Example of using the resource method
 class Test

@@ -261,7 +261,7 @@ class Router
             if (is_array($result) || is_object($result)) {
                 if (is_object($result) && property_exists($result, 'view')) {
                     // If the result is a view, render the view
-                    view($result->view, $result->data ?? [], $result->path);
+                    Helpers::view($result->view, $result->data ?? [], $result->path);
                 } else {
                     // If the result is an array or object, convert it to JSON and echo it
                     if (!headers_sent()) {
@@ -287,7 +287,7 @@ class Router
     private static function handleNotFound()
     {
         header('HTTP/1.0 404 Not Found');
-        view('error', ['message' => '404 Not Found'], __DIR__ . '/views');
+        Helpers::view('error', ['message' => '404 Not Found'], __DIR__ . '/views');
     }
 
     /**

@@ -23,7 +23,7 @@
       "Garcia\\": "src/Garcia"
     },
     "files": [
-      "src/Garcia/helpers.php"
+      "src/Garcia/legacy_helpers.php"
     ]
   },
   "autoload-dev": {
