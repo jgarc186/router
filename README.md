@@ -103,6 +103,13 @@ This method is used to run the router. It takes no parameters.
 
 This method is used to redirect to another URL. It takes one parameter: the URL to redirect to.
 
+> **Security warning:** Never pass raw user input directly as the redirect path. The function enforces the following constraints and throws `\InvalidArgumentException` on violation:
+>
+> - Carriage return or line feed characters (`\r`, `\n`) in the path are rejected, preventing header/cookie injection via a crafted `Location` header.
+> - Only same-origin relative paths starting with a single `/` are accepted. Absolute URLs (`https://evil.com/...`), protocol-relative URLs (`//evil.com/...`), and other schemes are rejected, preventing open redirects.
+>
+> Always validate and whitelist redirect targets before passing them to `Helpers::redirect()`.
+
 ### Helpers::view
 
 This method is used to render a view. It takes one parameter: the name of the view to render.
