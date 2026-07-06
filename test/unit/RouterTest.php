@@ -637,6 +637,29 @@ class RouterTest extends TestCase
         $this->assertSame('admin', $output);
     }
 
+    public function testJsonBodyDoesNotMutatePostOrRequestSuperglobals(): void
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/json';
+        $this->mockPhpInput('{"name":"Alice","age":30}');
+
+        $_POST = ['original' => 'post'];
+        $_REQUEST = ['original' => 'request'];
+
+        Router::post('/json-no-mutate', fn ($params) => "{$params['name']}:{$params['age']}");
+
+        ob_start();
+        Router::handleRequest('POST', '/json-no-mutate');
+        $output = ob_get_clean();
+
+        $this->assertSame('Alice:30', $output);
+        $this->assertSame(['original' => 'post'], $_POST);
+        $this->assertSame(['original' => 'request'], $_REQUEST);
+
+        unset($_SERVER['CONTENT_TYPE']);
+        $_POST = [];
+        $_REQUEST = [];
+    }
+
     public function testBodyParamsMergeWithRouteParams(): void
     {
         $_SERVER['CONTENT_TYPE'] = 'application/json';

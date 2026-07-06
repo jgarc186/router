@@ -174,10 +174,8 @@ class Router
         foreach (self::$routes as $route) {
             if ($route['method'] === $method && self::matchPath($route['path'], $uri, $params)) {
                 if ($method === 'POST' || $method === 'PUT' || $method === 'PATCH') {
-                    $body = self::parseBody();
-                    $_POST    = array_merge($_POST, $body);
-                    $_REQUEST = array_merge($_REQUEST, $body);
-                    $params   = array_merge($params, $body);
+                    $requestBody = self::parseBody();
+                    $params = array_merge($params, $requestBody);
                 }
                 self::callHandler($route['handler'], $params);
                 return;
