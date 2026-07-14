@@ -122,18 +122,59 @@ This method is used to redirect to another URL. It takes one parameter: the URL 
 
 ### Helpers::view
 
-This method is used to render a view. It takes one parameter: the name of the view to render.
+Renders a PHP template. Its signature is:
 
-The built-in 404 handler always resolves its error view relative to the library's own directory (`__DIR__ . '/views'`), so it works correctly regardless of the application's current working directory.
+```php
+Helpers::view(string $view, array|object $data, ?string $path = null): void
+```
 
-> **Security warning:** Never pass raw user input directly as the view name or path. The function enforces the following constraints and throws `\InvalidArgumentException` on violation:
->
-> - View names containing `../` path traversal sequences are rejected.
-> - Null bytes in the view name are rejected.
-> - The resolved file path must remain within the base views directory (symlink escapes are blocked via `realpath()`).
-> - The base directory must exist.
->
-> Always validate and whitelist view names before passing them to `Helpers::view()`.
+- `$view` — the template name, resolved to `<path>/<view>.php`.
+- `$data` — data exposed to the template (see the security notes below).
+- `$path` — the base views directory. Defaults to the library's own `views` directory (`__DIR__ . '/views'`), so the built-in 404 error view resolves correctly regardless of the application's current working directory.
+
+#### Security
+
+`view()` loads and executes a PHP file and exposes `$data` as template variables, so **both the view name and the data are security-sensitive**. Three distinct risks apply:
+
+**1. Path traversal — the `$view` / `$path` arguments.** A view name derived from user input could try to escape the views directory (e.g. `../../etc/passwd`) and execute or disclose arbitrary files. `view()` defends against this and throws `\InvalidArgumentException` when:
+
+- the view name contains a `../` path-traversal sequence,
+- the view name contains a null byte,
+- the resolved file falls outside the base views directory (symlink escapes are blocked via `realpath()`), or
+- the base directory does not exist.
+
+These checks are defense-in-depth, **not** a licence to forward raw input. Resolve user input against a fixed whitelist of view names in your own code before calling `view()`.
+
+**2. `extract()` variable injection — the *keys* of `$data`.** Internally `view()` calls `extract($data, EXTR_SKIP)`, so every key in `$data` becomes a local variable inside the template. `EXTR_SKIP` prevents a crafted key (e.g. `__viewPath`) from overwriting the router's own already-set variables, but you should still **never let user input control the keys of `$data`** — pass a fixed set of keys that you define in code.
+
+**3. Output escaping / XSS — the *values* in `$data`.** `view()` does not escape anything; template values are printed exactly as your template prints them. Escape untrusted values in the template with `htmlspecialchars()` (or an equivalent templating escape) to prevent cross-site scripting.
+
+#### Safe usage
+
+```php
+// Route: /articles/:slug — render an article page from user-controlled input.
+Router::get('/articles/:slug', function ($params) {
+    // 1. Resolve the requested view against a whitelist YOU control —
+    //    never pass $params['slug'] straight through as the view name.
+    $allowed = ['article', 'article-preview'];
+    $view = in_array($params['slug'], $allowed, true) ? $params['slug'] : 'article';
+
+    // 2. Build $data with keys YOU define; only the values come from input.
+    $data = [
+        'title' => $params['slug'],  // untrusted value
+        'body'  => 'Lorem ipsum...', // trusted, hard-coded value
+    ];
+
+    Helpers::view($view, $data, __DIR__ . '/views');
+});
+```
+
+```php
+<!-- views/article.php -->
+<!-- 3. Escape every untrusted value on output to prevent XSS. -->
+<h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
+<div><?= $body ?></div>
+```
 
 ### middleware
 
