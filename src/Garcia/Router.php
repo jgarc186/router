@@ -12,6 +12,11 @@ class Router
     private static array $routes = [];
 
     /**
+     * @var array<int> Route indexes selected by resource().
+     */
+    private array $resourceRouteIndexes = [];
+
+    /**
      * Sets a new route.
      *
      * @param string $method - HTTP method
@@ -33,9 +38,12 @@ class Router
 
     public function middleware(callable $middleware)
     {
-        $lastIdx = array_key_last(self::$routes);
-        if ($lastIdx !== null) {
-            self::$routes[$lastIdx]['middleware'][] = $middleware;
+        $routeIndexes = $this->resourceRouteIndexes ?: [array_key_last(self::$routes)];
+
+        foreach ($routeIndexes as $routeIndex) {
+            if ($routeIndex !== null && isset(self::$routes[$routeIndex])) {
+                self::$routes[$routeIndex]['middleware'][] = $middleware;
+            }
         }
 
         return $this;
@@ -56,13 +64,18 @@ class Router
             throw new \InvalidArgumentException("Resource controller class '{$className}' does not exist.");
         }
 
+        $firstRouteIndex = count(self::$routes);
+
         self::addRoute('GET', $path, fn () => (new $className())->index());
         self::addRoute('POST', $path, fn ($params) => (new $className())->store($params));
         self::addRoute('GET', "$path/:id", fn ($params) => (new $className())->show($params));
         self::addRoute('PATCH', "$path/:id", fn ($params) => (new $className())->update($params));
         self::addRoute('PUT', "$path/:id", fn ($params) => (new $className())->update($params));
         self::addRoute('DELETE', "$path/:id", fn ($params) => (new $className())->destroy($params));
-        return new static();
+        $router = new static();
+        $router->resourceRouteIndexes = range($firstRouteIndex, count(self::$routes) - 1);
+
+        return $router;
     }
 
     /**
