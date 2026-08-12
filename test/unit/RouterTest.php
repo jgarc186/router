@@ -170,6 +170,61 @@ class RouterTest extends TestCase
         $this->assertCount(6, Router::getRoutes());
     }
 
+    public function testResourceMiddlewareIsAttachedToEveryResourceRoute(): void
+    {
+        Router::resource('/tests', FakeController::class)
+            ->middleware(fn () => null);
+
+        foreach (Router::getRoutes() as $route) {
+            $this->assertCount(1, $route['middleware']);
+        }
+    }
+
+    public function testResourceMiddlewareRunsForEveryResourceRoute(): void
+    {
+        $calls = 0;
+
+        Router::resource('/tests', FakeController::class)
+            ->middleware(function () use (&$calls) {
+                $calls++;
+            });
+
+        foreach (
+            [
+                ['GET', '/tests'],
+                ['POST', '/tests'],
+                ['GET', '/tests/42'],
+                ['PATCH', '/tests/42'],
+                ['PUT', '/tests/42'],
+                ['DELETE', '/tests/42'],
+            ] as [$method, $path]
+        ) {
+            Router::handleMiddleware($method, $path);
+        }
+
+        $this->assertSame(6, $calls);
+    }
+
+    public function testResourceMiddlewarePreservesCallbackOrderAndDoesNotAffectOtherRoutes(): void
+    {
+        $events = [];
+
+        Router::get('/unrelated', fn () => 'unrelated');
+        Router::resource('/tests', FakeController::class)
+            ->middleware(function () use (&$events) {
+                $events[] = 'first';
+            })
+            ->middleware(function () use (&$events) {
+                $events[] = 'second';
+            });
+
+        Router::handleMiddleware('GET', '/unrelated');
+        $this->assertSame([], $events);
+
+        Router::handleMiddleware('GET', '/tests');
+        $this->assertSame(['first', 'second'], $events);
+    }
+
     public function testResourceThrowsForNonexistentClass(): void
     {
         $this->expectException(\InvalidArgumentException::class);
